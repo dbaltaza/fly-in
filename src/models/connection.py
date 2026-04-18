@@ -9,7 +9,8 @@ class Connection(BaseModel):
     Attributes:
         zone_a: One end of the connection.
         zone_b: The other end of the connection.
-        max_link_capacity: Maximum drones that can traverse per turn. Defaults to 1.
+        max_link_capacity: Maximum drones that can traverse per turn.
+                            Defaults to 1.
         current_usage: Number of drones currently traversing this turn.
     """
 
