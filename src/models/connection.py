@@ -1,6 +1,6 @@
 from pydantic import BaseModel, field_validator
 from .zone import Zone
-from ..parser.c_errors import MaxCapacity
+from ..parser.errors import MaxCapacity
 
 
 class Connection(BaseModel):

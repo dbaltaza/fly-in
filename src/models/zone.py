@@ -1,6 +1,6 @@
 
 from pydantic import BaseModel, field_validator
-from ..parser.c_errors import InvalidZone, MaxDrones
+from ..parser.errors import InvalidZone, MaxDrones
 
 
 class Zone(BaseModel):
