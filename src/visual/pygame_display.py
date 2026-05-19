@@ -16,37 +16,37 @@ from ..pathfinding.dijkstra import DijkstraStep
 
 # ── Colour palette (cyberpunk dark theme) ────────────────────────────────────
 
-_BG         = (8,   8,  16)
-_PANEL      = (12,  12,  22)
-_BORDER     = (30,  35,  55)
-_ACCENT     = (0,  200, 255)    # cyan
-_GOLD       = (255, 215,  40)   # gold / active
-_TEXT       = (190, 200, 220)
-_DIM        = (65,  75, 105)
-_SEP        = (22,  25,  40)
+_BG = (8, 8, 16)
+_PANEL = (12, 12, 22)
+_BORDER = (30, 35, 55)
+_ACCENT = (0, 200, 255)    # cyan
+_GOLD = (255, 215, 40)     # gold / active
+_TEXT = (190, 200, 220)
+_DIM = (65, 75, 105)
+_SEP = (22, 25, 40)
 
-_C_START    = (  0, 255, 136)
-_C_END      = (255, 210,   0)
-_C_NORMAL   = ( 55, 120, 195)
-_C_RESTRICT = (220,  70,  30)
-_C_PRIORITY = (  0, 210, 165)
-_C_BLOCKED  = ( 40,  40,  55)
-_C_DRONE    = (255, 255, 255)
-_C_TRANSIT  = (255, 215,  40)
-_C_PATH     = ( 40, 160, 220)
+_C_START = (0, 255, 136)
+_C_END = (255, 210, 0)
+_C_NORMAL = (55, 120, 195)
+_C_RESTRICT = (220, 70, 30)
+_C_PRIORITY = (0, 210, 165)
+_C_BLOCKED = (40, 40, 55)
+_C_DRONE = (255, 255, 255)
+_C_TRANSIT = (255, 215, 40)
+_C_PATH = (40, 160, 220)
 
 _NAME_RGB: dict[str, tuple[int, int, int]] = {
-    "red":    (210,  55,  55),
-    "green":  (  0, 210, 100),
-    "blue":   ( 55, 130, 210),
-    "yellow": (220, 190,  30),
-    "orange": (220, 120,  30),
-    "gray":   ( 95,  95, 110),
-    "grey":   ( 95,  95, 110),
-    "cyan":   (  0, 210, 210),
-    "purple": (155,  75, 205),
+    "red":    (210, 55, 55),
+    "green":  (0, 210, 100),
+    "blue":   (55, 130, 210),
+    "yellow": (220, 190, 30),
+    "orange": (220, 120, 30),
+    "gray":   (95, 95, 110),
+    "grey":   (95, 95, 110),
+    "cyan":   (0, 210, 210),
+    "purple": (155, 75, 205),
     "white":  (210, 215, 225),
-    "black":  ( 40,  40,  50),
+    "black":  (40, 40, 50),
     "pink":   (215, 115, 175),
 }
 
@@ -59,13 +59,13 @@ _ZONE_TYPE_COLORS: dict[str, tuple[int, int, int]] = {
 
 # ── Layout ────────────────────────────────────────────────────────────────────
 
-_W          = 1280
-_H          = 820
-_GRAPH_W    = 890
-_PANEL_W    = _W - _GRAPH_W
+_W = 1280
+_H = 820
+_GRAPH_W = 890
+_PANEL_W = _W - _GRAPH_W
 _TIMELINE_H = 58
-_GRAPH_H    = _H - _TIMELINE_H
-_PAD        = 68
+_GRAPH_H = _H - _TIMELINE_H
+_PAD = 68
 
 
 # ── Drawing helpers ───────────────────────────────────────────────────────────
@@ -81,6 +81,7 @@ def _txt(font: Any, text: str, color: tuple[int, int, int]) -> pygame.Surface:
     Returns:
         Rendered pygame Surface.
     """
+    surf: pygame.Surface
     surf, _ = font.render(text, color)
     return surf
 
@@ -166,8 +167,8 @@ def _draw_arrow_head(
         size: Arrowhead size in pixels.
     """
     a = angle_rad + math.pi
-    left  = (tip[0] + int(math.cos(a - 0.4) * size),
-             tip[1] + int(math.sin(a - 0.4) * size))
+    left = (tip[0] + int(math.cos(a - 0.4) * size),
+            tip[1] + int(math.sin(a - 0.4) * size))
     right = (tip[0] + int(math.cos(a + 0.4) * size),
              tip[1] + int(math.sin(a + 0.4) * size))
     pygame.draw.polygon(surface, color, [tip, left, right])
@@ -199,7 +200,6 @@ def _zone_fill_color(
     if color_hint and color_hint.lower() in _NAME_RGB:
         return _NAME_RGB[color_hint.lower()]
     return _ZONE_TYPE_COLORS.get(zone_type, _C_NORMAL)
-
 
 
 def _lighter(color: tuple[int, int, int], factor: float = 0.4) -> tuple[int, int, int]:
@@ -473,8 +473,8 @@ class PygameDisplay:
             else:
                 self._draw_path_ghost(screen)
                 snap_from = self.snapshots[max(0, idx - 1)]
-                snap      = self.snapshots[idx]
-                t_eased   = _smoothstep(anim_t)
+                snap = self.snapshots[idx]
+                t_eased = _smoothstep(anim_t)
                 self._draw_connections(screen, snap, f_xs)
                 self._draw_zones(screen, snap, f_sm, f_xs)
                 self._draw_drones(screen, snap_from, snap, t_eased, f_xs)
@@ -631,8 +631,8 @@ class PygameDisplay:
 
             zr = self._zone_r
             active_lw = max(1, zr // 9)
-            glow_lw   = max(4, zr // 3)
-            arrow_sz  = max(4, zr // 3)
+            glow_lw = max(4, zr // 3)
+            arrow_sz = max(4, zr // 3)
 
             if is_active:
                 # glow overlay
@@ -687,14 +687,14 @@ class PygameDisplay:
             drone_counts[d["zone"]] = drone_counts.get(d["zone"], 0) + 1
 
         start_name = self.graph.start.name if self.graph.start else ""
-        end_name   = self.graph.end.name   if self.graph.end   else ""
+        end_name = self.graph.end.name if self.graph.end else ""
 
         for name, zone in self.graph.zones.items():
             pos = self._positions.get(name)
             if pos is None:
                 continue
-            color  = _zone_fill_color(name, zone.zone_type, zone.color, start_name, end_name)
-            count  = drone_counts.get(name, 0)
+            color = _zone_fill_color(name, zone.zone_type, zone.color, start_name, end_name)
+            count = drone_counts.get(name, 0)
             is_unlimited = name in (start_name, end_name)
 
             zr = self._zone_r
@@ -799,17 +799,15 @@ class PygameDisplay:
             """Return the canonical pixel position for a drone's logical state.
 
             In-transit drones sit at the midpoint of the connection they are
-            crossing.  All other drones sit below their zone circle so they are
-            visible outside the zone node.
+            crossing.  All other drones sit at their zone's centre and are
+            drawn on top of the zone circle.
             """
             if d["state"] == "in_transit" and d["dest"]:
                 pa = self._positions.get(d["zone"])
                 pb = self._positions.get(d["dest"])
                 if pa and pb:
                     return ((pa[0] + pb[0]) // 2, (pa[1] + pb[1]) // 2)
-            pos = self._positions.get(d["zone"], (0, 0))
-            # Place the dot just below the zone circle so it is not hidden by it
-            return (pos[0], pos[1] + self._zone_r + self._drone_r + 4)
+            return self._positions.get(d["zone"], (0, 0))
 
         from_map: dict[int, DroneSnapshot] = {d["id"]: d for d in snap_from["drones"]}
 
@@ -987,9 +985,9 @@ class PygameDisplay:
         pygame.draw.rect(surface, _PANEL, (px, 0, _PANEL_W, _H))
         pygame.draw.line(surface, _BORDER, (px, 0), (px, _H), 1)
 
-        x   = px + 16
-        y   = 0
-        rw  = _PANEL_W - 32  # usable width inside panel
+        x = px + 16
+        y = 0
+        rw = _PANEL_W - 32  # usable width inside panel
 
         def sep() -> None:
             """Draw a horizontal separator line."""
@@ -1081,8 +1079,8 @@ class PygameDisplay:
 
         # ── Drone states ────────────────────────────────────────────────────
 
-        waiting  = sum(1 for d in snap["drones"] if d["state"] == "waiting")
-        in_t     = sum(1 for d in snap["drones"] if d["state"] == "in_transit")
+        waiting = sum(1 for d in snap["drones"] if d["state"] == "waiting")
+        in_t = sum(1 for d in snap["drones"] if d["state"] == "in_transit")
 
         write("DRONE STATUS", _TEXT, font=f_head)
         y += 2
@@ -1168,8 +1166,8 @@ class PygameDisplay:
 
         # ── Dark overlay on every zone that is not in the frontier ────────────
         overlay = pygame.Surface((_GRAPH_W, _GRAPH_H), pygame.SRCALPHA)
-        for name, pos in self._positions.items():
-            if pos[0] < 0 or pos[0] > _GRAPH_W or pos[1] < 0 or pos[1] > _GRAPH_H:
+        for name, zpos in self._positions.items():
+            if zpos[0] < 0 or zpos[0] > _GRAPH_W or zpos[1] < 0 or zpos[1] > _GRAPH_H:
                 continue
             if name in visited and name != current:
                 alpha = 150   # settled — dim grey
@@ -1177,7 +1175,7 @@ class PygameDisplay:
                 alpha = 200   # unknown — nearly black
             else:
                 continue
-            pygame.draw.circle(overlay, (0, 0, 0, alpha), pos, zr + 2)
+            pygame.draw.circle(overlay, (0, 0, 0, alpha), zpos, zr + 2)
         surface.blit(overlay, (0, 0))
 
         # ── Path from start to current node (blue line) ───────────────────────
@@ -1263,9 +1261,9 @@ class PygameDisplay:
         pygame.draw.rect(surface, _PANEL, (px, 0, _PANEL_W, _H))
         pygame.draw.line(surface, _BORDER, (px, 0), (px, _H), 1)
 
-        x  = px + 16
+        x = px + 16
         rw = _PANEL_W - 32
-        y  = 0
+        y = 0
 
         def sep() -> None:
             """Draw a separator line."""
@@ -1354,7 +1352,7 @@ class PygameDisplay:
         for name, cost in sorted_front[:6]:
             bar_ratio = 1.0 - cost / (max(v for _, v in sorted_front) + 0.001)
             bw = max(1, int((rw - 70) * bar_ratio))
-            pygame.draw.rect(surface, (*_GOLD, 60),  # type: ignore[arg-type]
+            pygame.draw.rect(surface, (*_GOLD, 60),
                              pygame.Rect(x + 70, y + 2, bw, 9))
             write(f"  {name[:12]:<12} {cost:.1f}", _GOLD, font=f_sm)
         if len(sorted_front) > 6:
