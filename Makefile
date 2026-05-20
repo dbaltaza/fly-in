@@ -7,6 +7,9 @@ install:
 run:
 	.venv/bin/python main.py $(MAP)
 
+visual:
+	.venv/bin/python main.py $(MAP) --pygame
+
 debug:
 	.venv/bin/python -m pdb main.py $(MAP)
 
@@ -23,4 +26,4 @@ lint-strict:
 	.venv/bin/python -m flake8 .
 	.venv/bin/python -m mypy . --strict
 
-.PHONY: install run debug clean lint lint-strict
+.PHONY: install run debug clean lint lint-strict visual
