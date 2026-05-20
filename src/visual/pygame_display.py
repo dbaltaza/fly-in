@@ -59,8 +59,8 @@ _ZONE_TYPE_COLORS: dict[str, tuple[int, int, int]] = {
 
 # ── Layout ────────────────────────────────────────────────────────────────────
 
-_W = 1280
-_H = 820
+_W = 1200
+_H = 900
 _GRAPH_W = 890
 _PANEL_W = _W - _GRAPH_W
 _TIMELINE_H = 58
@@ -1097,8 +1097,8 @@ class PygameDisplay:
         write("CONTROLS", _TEXT, font=f_head)
         y += 2
         controls = [
-            ("→ / Space", "next turn",   _ACCENT),
-            ("←",          "prev turn",   _ACCENT),
+            ("-> / Space", "next turn",   _ACCENT),
+            ("<-",          "prev turn",   _ACCENT),
             ("A",          f"autoplay {'ON' if autoplay else 'OFF'}", _GOLD if autoplay else _DIM),
             ("+ / -",      f"speed {self.speed_ms}ms", _DIM),
             ("Scroll",     "zoom in/out", _DIM),
@@ -1382,8 +1382,8 @@ class PygameDisplay:
         write("CONTROLS", _TEXT, font=f_head)
         y += 2
         controls = [
-            ("→ / Space", "next step",  _ACCENT),
-            ("←",          "prev step",  _ACCENT),
+            ("-> / Space", "next step",  _ACCENT),
+            ("<-",          "prev step",  _ACCENT),
             ("A",          f"autoplay {'ON' if autoplay else 'OFF'}",
              _GOLD if autoplay else _DIM),
             ("+ / -",      f"speed {self.speed_ms}ms", _DIM),
