@@ -11,7 +11,7 @@ class DroneSnapshot(TypedDict):
 
     Attributes:
         id: Drone identifier number.
-        zone: Name of the zone the drone currently occupies (source if in_transit).
+        zone: Name of the zone the drone occupies (source if in_transit).
         state: One of 'waiting', 'in_transit', or 'arrived'.
         dest: Name of the transit destination zone, or None.
     """
@@ -27,9 +27,9 @@ class TurnSnapshot(TypedDict):
 
     Attributes:
         turn: Turn number (0 = initial state before any moves).
-        moves: Move strings emitted this turn (e.g. ['D1-roof1', 'D2-corridorA']).
+        moves: Move strings emitted this turn (e.g. ['D1-roof1']).
         drones: Snapshot of every drone's state.
-        active_connections: Zone-name pairs for connections traversed this turn.
+        active_connections: Zone-name pairs traversed this turn.
     """
 
     turn: int
@@ -70,7 +70,9 @@ class SimulationEngine:
         self._active_connections: list[tuple[str, str]] = []
         self.dijkstra_steps: list[DijkstraStep] = []
 
-        path, self.dijkstra_steps = dijkstra_with_steps(graph, self.start, self.end)
+        path, self.dijkstra_steps = dijkstra_with_steps(
+            graph, self.start, self.end
+        )
         if not path:
             raise ValueError("No path exists from start to end zone.")
 
@@ -116,7 +118,11 @@ class SimulationEngine:
         """
         drones: list[DroneSnapshot] = []
         for drone in self.drones:
-            dest = drone.transit_destination.name if drone.transit_destination else None
+            dest = (
+                drone.transit_destination.name
+                if drone.transit_destination
+                else None
+            )
             drones.append(
                 DroneSnapshot(
                     id=drone.id,
@@ -145,12 +151,20 @@ class SimulationEngine:
         for drone in self.drones:
             if drone.state != "in_transit":
                 continue
-            dest_name = drone.transit_destination.name if drone.transit_destination else None
+            dest_name = (
+                drone.transit_destination.name
+                if drone.transit_destination
+                else None
+            )
             drone.tick_transit()
             if drone.state != "in_transit":
-                self.turn_moves.append(f"{drone.label()}-{drone.current_zone.name}")
+                self.turn_moves.append(
+                    f"{drone.label()}-{drone.current_zone.name}"
+                )
                 if dest_name:
-                    self._active_connections.append((drone.current_zone.name, dest_name))
+                    self._active_connections.append(
+                        (drone.current_zone.name, dest_name)
+                    )
 
     def _move_drones(self) -> None:
         """Attempt to move each waiting drone one step along its path.
@@ -168,7 +182,8 @@ class SimulationEngine:
                 continue
 
             conn = None
-            for neighbor, connection in self.graph.adjacency[drone.current_zone.name]:
+            adj = self.graph.adjacency[drone.current_zone.name]
+            for neighbor, connection in adj:
                 if neighbor.name == next_zone.name:
                     conn = connection
                     break
@@ -182,7 +197,8 @@ class SimulationEngine:
                 next_zone.name == self.end.name
                 or next_zone.name == self.start.name
             )
-            if not is_unlimited and next_zone.current_drones >= next_zone.max_drones:
+            zone_full = next_zone.current_drones >= next_zone.max_drones
+            if not is_unlimited and zone_full:
                 continue
 
             source_name = drone.current_zone.name
@@ -191,10 +207,15 @@ class SimulationEngine:
             self._active_connections.append((source_name, next_zone.name))
 
             if drone.state == "in_transit":
-                dst = drone.transit_destination.name  # type: ignore[union-attr]
-                self.turn_moves.append(f"{drone.label()}-{source_name}_{dst}")
+                td = drone.transit_destination
+                dst = td.name  # type: ignore[union-attr]
+                self.turn_moves.append(
+                    f"{drone.label()}-{source_name}_{dst}"
+                )
             else:
-                self.turn_moves.append(f"{drone.label()}-{drone.current_zone.name}")
+                self.turn_moves.append(
+                    f"{drone.label()}-{drone.current_zone.name}"
+                )
 
     def _print_turn(self) -> None:
         """Print all drone movements for the current turn on one line."""

@@ -15,7 +15,7 @@ class InvalidZone(InvalidType):
 
 
 class MaxCapacity(InvalidType):
-    """Raised when a connection's max_link_capacity is not a positive integer."""
+    """Raised when a connection's max_link_capacity is not positive."""
     pass
 
 

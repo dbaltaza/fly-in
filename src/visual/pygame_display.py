@@ -7,7 +7,10 @@ from typing import Any
 try:
     import pygame
 except ImportError:
-    print("pygame is not installed. Run: pip install pygame-ce", file=sys.stderr)
+    print(
+        "pygame is not installed. Run: pip install pygame-ce",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 from ..models.graph import Graph
@@ -57,7 +60,7 @@ _ZONE_TYPE_COLORS: dict[str, tuple[int, int, int]] = {
     "blocked":    _C_BLOCKED,
 }
 
-# ── Layout ────────────────────────────────────────────────────────────────────
+# ── Layout ───────────────────────────────────────────────────────────────────
 
 _W = 1200
 _H = 900
@@ -68,7 +71,7 @@ _GRAPH_H = _H - _TIMELINE_H
 _PAD = 68
 
 
-# ── Drawing helpers ───────────────────────────────────────────────────────────
+# ── Drawing helpers ──────────────────────────────────────────────────────────
 
 def _txt(font: Any, text: str, color: tuple[int, int, int]) -> pygame.Surface:
     """Render text using a pygame.freetype font.
@@ -202,7 +205,9 @@ def _zone_fill_color(
     return _ZONE_TYPE_COLORS.get(zone_type, _C_NORMAL)
 
 
-def _lighter(color: tuple[int, int, int], factor: float = 0.4) -> tuple[int, int, int]:
+def _lighter(
+    color: tuple[int, int, int], factor: float = 0.4,
+) -> tuple[int, int, int]:
     """Return a lighter version of an RGB colour by blending toward white.
 
     Args:
@@ -219,7 +224,9 @@ def _lighter(color: tuple[int, int, int], factor: float = 0.4) -> tuple[int, int
     )
 
 
-def _darker(color: tuple[int, int, int], factor: float = 0.5) -> tuple[int, int, int]:
+def _darker(
+    color: tuple[int, int, int], factor: float = 0.5,
+) -> tuple[int, int, int]:
     """Return a darker version of an RGB colour by blending toward black.
 
     Args:
@@ -249,7 +256,7 @@ def _smoothstep(t: float) -> float:
     return t * t * (3.0 - 2.0 * t)
 
 
-# ── Main display class ────────────────────────────────────────────────────────
+# ── Main display class ───────────────────────────────────────────────────────
 
 
 class PygameDisplay:
@@ -262,7 +269,7 @@ class PygameDisplay:
         graph: The routing graph.
         snapshots: Ordered TurnSnapshots (index 0 = initial state).
         speed_ms: Auto-play delay in milliseconds.
-        primary_path: Optional ordered list of zone names forming the primary route.
+        primary_path: Optional list of zone names for the primary route.
     """
 
     def __init__(
@@ -289,7 +296,7 @@ class PygameDisplay:
         self.speed_ms = speed_ms
         self.primary_path = primary_path or []
         self.dijkstra_steps: list[DijkstraStep] = dijkstra_steps or []
-        # Grid-space zone positions (centered at origin, in map coordinate units)
+        # Grid-space zone positions (centered at origin)
         self._grid_pos: dict[str, tuple[float, float]] = {}
         # View state — pixels per grid unit, and pixel position of grid origin
         self._view_scale: float = 1.0
@@ -364,7 +371,10 @@ class PygameDisplay:
 
                     elif dijkstra_mode:
                         if event.key in (pygame.K_RIGHT, pygame.K_SPACE):
-                            d_idx = min(d_idx + 1, len(self.dijkstra_steps) - 1)
+                            d_idx = min(
+                                d_idx + 1,
+                                len(self.dijkstra_steps) - 1,
+                            )
                             autoplay = False
                         elif event.key == pygame.K_LEFT:
                             d_idx = max(d_idx - 1, 0)
@@ -422,17 +432,21 @@ class PygameDisplay:
 
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if dijkstra_mode:
-                        hit = self._timeline_hit(event.pos, len(self.dijkstra_steps))
+                        hit = self._timeline_hit(
+                            event.pos, len(self.dijkstra_steps)
+                        )
                         if hit is not None:
                             d_idx = hit
                             autoplay = False
                     else:
-                        hit = self._timeline_hit(event.pos, len(self.snapshots))
+                        hit = self._timeline_hit(
+                            event.pos, len(self.snapshots)
+                        )
                         if hit is not None:
                             idx = hit
                             autoplay = False
 
-            # ── Advance autoplay ──────────────────────────────────────────────
+            # ── Advance autoplay ─────────────────────────────────────────────
             if autoplay:
                 elapsed = now - last_advance
                 if dijkstra_mode:
@@ -455,7 +469,7 @@ class PygameDisplay:
                     else:
                         anim_t = raw_t
 
-            # ── Render ────────────────────────────────────────────────────────
+            # ── Render ───────────────────────────────────────────────────────
             screen.fill(_BG)
             self._draw_grid(screen)
 
@@ -465,11 +479,15 @@ class PygameDisplay:
                 self._draw_connections(screen, self.snapshots[0], f_xs)
                 self._draw_zones(screen, self.snapshots[0], f_sm, f_xs)
                 self._draw_dijkstra_overlay(screen, d_step, f_xs)
-                self._draw_timeline(screen, d_idx, f_xs,
-                                    total_override=len(self.dijkstra_steps))
-                self._draw_dijkstra_panel(screen, d_step, d_idx,
-                                          len(self.dijkstra_steps),
-                                          f_title, f_head, f_body, f_sm, autoplay)
+                self._draw_timeline(
+                    screen, d_idx, f_xs,
+                    total_override=len(self.dijkstra_steps),
+                )
+                self._draw_dijkstra_panel(
+                    screen, d_step, d_idx,
+                    len(self.dijkstra_steps),
+                    f_title, f_head, f_body, f_sm, autoplay,
+                )
             else:
                 self._draw_path_ghost(screen)
                 snap_from = self.snapshots[max(0, idx - 1)]
@@ -479,15 +497,17 @@ class PygameDisplay:
                 self._draw_zones(screen, snap, f_sm, f_xs)
                 self._draw_drones(screen, snap_from, snap, t_eased, f_xs)
                 self._draw_timeline(screen, idx, f_xs)
-                self._draw_panel(screen, snap, f_title, f_head, f_body, f_sm, autoplay)
+                self._draw_panel(
+                    screen, snap, f_title, f_head, f_body, f_sm, autoplay,
+                )
 
             pygame.display.flip()
             clock.tick(60)
 
-    # ── Layout helpers ────────────────────────────────────────────────────────
+    # ── Layout helpers ───────────────────────────────────────────────────────
 
     def _compute_positions(self) -> None:
-        """Compute grid-space zone positions centered at origin, then call _update_view.
+        """Compute grid-space positions and call _update_view.
 
         Grid coordinates are centred at the mean of the bounding box so that
         zooming scales symmetrically around the graph centre.
@@ -503,7 +523,7 @@ class PygameDisplay:
         self._fit_all()
 
     def _update_view(self) -> None:
-        """Recompute pixel positions and adaptive sizes from current view state."""
+        """Recompute pixel positions and sizes from view state."""
         self._zone_r = max(6, min(28, int(self._view_scale * 0.42)))
         self._drone_r = max(3, min(8, int(self._zone_r * 0.38)))
         self._positions = {
@@ -567,7 +587,7 @@ class PygameDisplay:
                 return i
         return None
 
-    # ── Background ────────────────────────────────────────────────────────────
+    # ── Background ───────────────────────────────────────────────────────────
 
     def _draw_grid(self, surface: pygame.Surface) -> None:
         """Draw a subtle dot-grid background in the graph area.
@@ -581,12 +601,12 @@ class PygameDisplay:
             for y in range(0, _GRAPH_H, step):
                 pygame.draw.circle(surface, dot_color, (x, y), 1)
 
-    # ── Path ghost ────────────────────────────────────────────────────────────
+    # ── Path ghost ───────────────────────────────────────────────────────────
 
     def _draw_path_ghost(self, surface: pygame.Surface) -> None:
         """Draw the primary Dijkstra path as a faint dashed route.
 
-        This shows the algorithm's planned route even before drones traverse it,
+        Shows the algorithm's planned route before drones traverse it,
         giving visual insight into the pathfinding decision.
 
         Args:
@@ -600,9 +620,11 @@ class PygameDisplay:
             pb = self._positions.get(self.primary_path[i + 1])
             if pa is None or pb is None:
                 continue
-            _draw_dashed_line(surface, ghost_color, pa, pb, dash=10, gap=8, width=2)
+            _draw_dashed_line(
+                surface, ghost_color, pa, pb, dash=10, gap=8, width=2,
+            )
 
-    # ── Connections ───────────────────────────────────────────────────────────
+    # ── Connections ──────────────────────────────────────────────────────────
 
     def _draw_connections(
         self, surface: pygame.Surface, snap: TurnSnapshot, font: Any
@@ -642,14 +664,21 @@ class PygameDisplay:
                 pygame.draw.line(surface, _GOLD, pa, pb, active_lw)
 
                 # arrowhead at midpoint
-                pair = active_dirs.get(key, (conn.zone_a.name, conn.zone_b.name))
+                pair = active_dirs.get(
+                    key, (conn.zone_a.name, conn.zone_b.name)
+                )
                 src_pos = self._positions.get(pair[0])
                 dst_pos = self._positions.get(pair[1])
                 if src_pos and dst_pos:
                     mx = (src_pos[0] + dst_pos[0]) // 2
                     my = (src_pos[1] + dst_pos[1]) // 2
-                    angle = math.atan2(dst_pos[1] - src_pos[1], dst_pos[0] - src_pos[0])
-                    _draw_arrow_head(surface, _GOLD, (mx, my), angle, size=arrow_sz)
+                    angle = math.atan2(
+                        dst_pos[1] - src_pos[1],
+                        dst_pos[0] - src_pos[0],
+                    )
+                    _draw_arrow_head(
+                        surface, _GOLD, (mx, my), angle, size=arrow_sz
+                    )
             else:
                 pygame.draw.line(surface, _BORDER, pa, pb, 1)
 
@@ -662,7 +691,7 @@ class PygameDisplay:
                 surface.blit(bg, (mid[0] - lw // 2 - 2, mid[1] - lh // 2 - 1))
                 surface.blit(lbl, (mid[0] - lw // 2, mid[1] - lh // 2))
 
-    # ── Zones ─────────────────────────────────────────────────────────────────
+    # ── Zones ────────────────────────────────────────────────────────────────
 
     def _draw_zones(
         self,
@@ -681,7 +710,7 @@ class PygameDisplay:
         """
         drone_counts: dict[str, int] = {}
         for d in snap["drones"]:
-            # in_transit drones are shown mid-connection, not inside their source zone
+            # in_transit drones are shown mid-connection, not in source zone
             if d["state"] in ("arrived", "in_transit"):
                 continue
             drone_counts[d["zone"]] = drone_counts.get(d["zone"], 0) + 1
@@ -693,7 +722,9 @@ class PygameDisplay:
             pos = self._positions.get(name)
             if pos is None:
                 continue
-            color = _zone_fill_color(name, zone.zone_type, zone.color, start_name, end_name)
+            color = _zone_fill_color(
+                name, zone.zone_type, zone.color, start_name, end_name,
+            )
             count = drone_counts.get(name, 0)
             is_unlimited = name in (start_name, end_name)
 
@@ -704,18 +735,25 @@ class PygameDisplay:
                 _glow(surface, color, pos, zr, layers=3, strength=80)
 
             # capacity fill arc (inner ring showing occupancy)
-            if not is_unlimited and zone.max_drones > 0 and count > 0 and zr >= 8:
+            show_arc = (not is_unlimited and zone.max_drones > 0
+                        and count > 0 and zr >= 8)
+            if show_arc:
                 fill_ratio = min(count / zone.max_drones, 1.0)
                 inset = max(2, zr // 7)
                 arc_rect = pygame.Rect(
                     pos[0] - zr + inset, pos[1] - zr + inset,
                     (zr - inset) * 2, (zr - inset) * 2
                 )
-                arc_color = _lighter(color, 0.5) if fill_ratio < 1 else (255, 80, 80)
+                arc_color = (
+                    _lighter(color, 0.5)
+                    if fill_ratio < 1 else (255, 80, 80)
+                )
                 end_angle = -math.pi / 2 + fill_ratio * 2 * math.pi
                 try:
-                    pygame.draw.arc(surface, arc_color, arc_rect, -math.pi / 2, end_angle,
-                                    max(1, zr // 10))
+                    pygame.draw.arc(
+                        surface, arc_color, arc_rect,
+                        -math.pi / 2, end_angle, max(1, zr // 10),
+                    )
                 except Exception:
                     pass
 
@@ -725,17 +763,26 @@ class PygameDisplay:
             pygame.draw.circle(surface, color, pos, max(1, zr - 3))
 
             # border ring
-            border_col = _lighter(color, 0.25) if count > 0 else _darker(color, 0.1)
+            border_col = (
+                _lighter(color, 0.25) if count > 0
+                else _darker(color, 0.1)
+            )
             pygame.draw.circle(surface, border_col, pos, zr, max(1, zr // 14))
 
             # special markers (only when large enough to see)
             if zr >= 8:
                 if zone.zone_type == "blocked":
                     s = int(zr * 0.5)
-                    pygame.draw.line(surface, (180, 50, 50),
-                                     (pos[0] - s, pos[1] - s), (pos[0] + s, pos[1] + s), 2)
-                    pygame.draw.line(surface, (180, 50, 50),
-                                     (pos[0] + s, pos[1] - s), (pos[0] - s, pos[1] + s), 2)
+                    pygame.draw.line(
+                        surface, (180, 50, 50),
+                        (pos[0] - s, pos[1] - s),
+                        (pos[0] + s, pos[1] + s), 2,
+                    )
+                    pygame.draw.line(
+                        surface, (180, 50, 50),
+                        (pos[0] + s, pos[1] - s),
+                        (pos[0] - s, pos[1] + s), 2,
+                    )
                 elif name == start_name:
                     s = int(zr * 0.4)
                     pts = [(pos[0] - s // 2, pos[1] - s),
@@ -748,18 +795,23 @@ class PygameDisplay:
                            (pos[0], pos[1] + s), (pos[0] - s, pos[1])]
                     pygame.draw.polygon(surface, _darker(_C_END, 0.3), pts)
                 elif zone.zone_type == "priority":
-                    pygame.draw.circle(surface, _lighter(_C_PRIORITY, 0.6), pos,
-                                       max(2, zr // 6))
+                    pygame.draw.circle(
+                        surface, _lighter(_C_PRIORITY, 0.6),
+                        pos, max(2, zr // 6),
+                    )
 
-            # zone label (below circle) — hidden when zones are too small to read
+            # zone label (below circle) — hidden when zones are too small
             if zr >= 12:
                 max_chars = max(4, zr // 2)
-                display_name = name if len(name) <= max_chars else name[:max_chars - 1] + "…"
+                display_name = (
+                    name if len(name) <= max_chars
+                    else name[:max_chars - 1] + "…"
+                )
                 lbl = _txt(font, display_name, _lighter(color, 0.7))
                 lw, _ = lbl.get_size()
                 surface.blit(lbl, (pos[0] - lw // 2, pos[1] + zr + 3))
 
-            # drone count badge (above-right of circle) — always shown when occupied
+            # drone count badge (above-right) — shown when occupied
             if count > 0:
                 badge_txt = str(count)
                 badge = _txt(font_xs, badge_txt, _TEXT)
@@ -771,7 +823,7 @@ class PygameDisplay:
                 surface.blit(bg, (bx - 3, by - 1))
                 surface.blit(badge, (bx, by))
 
-    # ── Drones ────────────────────────────────────────────────────────────────
+    # ── Drones ───────────────────────────────────────────────────────────────
 
     def _draw_drones(
         self,
@@ -781,7 +833,7 @@ class PygameDisplay:
         t: float,
         font: Any,
     ) -> None:
-        """Draw drones smoothly animated between two consecutive turn snapshots.
+        """Draw drones smoothly animated between two turn snapshots.
 
         Positions are linearly interpolated between snap_from and snap_to using
         the eased progress t.  In-transit drones (restricted-zone crossing) sit
@@ -809,7 +861,9 @@ class PygameDisplay:
                     return ((pa[0] + pb[0]) // 2, (pa[1] + pb[1]) // 2)
             return self._positions.get(d["zone"], (0, 0))
 
-        from_map: dict[int, DroneSnapshot] = {d["id"]: d for d in snap_from["drones"]}
+        from_map: dict[int, DroneSnapshot] = {
+            d["id"]: d for d in snap_from["drones"]
+        }
 
         # One shared SRCALPHA surface for all motion trails (single blit)
         trail_surf = pygame.Surface((_GRAPH_W, _GRAPH_H), pygame.SRCALPHA)
@@ -827,7 +881,7 @@ class PygameDisplay:
             fp = drone_px(from_d) if from_d else drone_px(d)
             tp = drone_px(d)
 
-            # ── Waypoint animation for pass-through restricted zones ───────────
+            # ── Waypoint animation for pass-through restricted zones ─────────
             # When a drone arrives at zone R and immediately departs in the
             # same turn, snap_from shows it heading to R and snap_to shows it
             # already leaving R.  The normal lerp would skip R entirely.
@@ -860,7 +914,8 @@ class PygameDisplay:
 
             # Gold while in transit (either leg of a restricted crossing)
             is_transit = d["state"] == "in_transit" or (
-                from_d is not None and from_d["state"] == "in_transit" and t < 1.0
+                from_d is not None
+                and from_d["state"] == "in_transit" and t < 1.0
             )
             color = _C_TRANSIT if is_transit else _C_DRONE
 
@@ -879,13 +934,20 @@ class PygameDisplay:
                         ty = int(fp[1] + (waypoint[1] - fp[1]) * trail_t2)
                     else:
                         trail_t2 = max(0.0, (t - 0.5) * 2.0 - 0.35)
-                        tx = int(waypoint[0] + (tp[0] - waypoint[0]) * trail_t2)
-                        ty = int(waypoint[1] + (tp[1] - waypoint[1]) * trail_t2)
+                        tx = int(
+                            waypoint[0] + (tp[0] - waypoint[0]) * trail_t2
+                        )
+                        ty = int(
+                            waypoint[1] + (tp[1] - waypoint[1]) * trail_t2
+                        )
                 else:
                     trail_t = max(0.0, t - 0.35)
                     tx = int(fp[0] + (tp[0] - fp[0]) * trail_t)
                     ty = int(fp[1] + (tp[1] - fp[1]) * trail_t)
-                pygame.draw.line(trail_surf, (*color, trail_alpha), (tx, ty), (cx, cy), trail_w)
+                pygame.draw.line(
+                    trail_surf, (*color, trail_alpha),
+                    (tx, ty), (cx, cy), trail_w,
+                )
 
             glow_s = 3 if is_transit else 2
             _glow(surface, color, (cx, cy), dr, layers=glow_s, strength=70)
@@ -899,7 +961,7 @@ class PygameDisplay:
 
         surface.blit(trail_surf, (0, 0))
 
-    # ── Timeline ──────────────────────────────────────────────────────────────
+    # ── Timeline ─────────────────────────────────────────────────────────────
 
     def _draw_timeline(
         self,
@@ -920,14 +982,19 @@ class PygameDisplay:
             total_override: If set, use this as the total count instead of
                 len(self.snapshots) — used in Dijkstra replay mode.
         """
-        total = total_override if total_override is not None else len(self.snapshots)
+        total = (
+            total_override if total_override is not None
+            else len(self.snapshots)
+        )
         if total <= 1:
             return
 
         # timeline strip background
         strip = pygame.Rect(0, _GRAPH_H, _GRAPH_W, _TIMELINE_H)
         pygame.draw.rect(surface, _PANEL, strip)
-        pygame.draw.line(surface, _BORDER, (0, _GRAPH_H), (_GRAPH_W, _GRAPH_H), 1)
+        pygame.draw.line(
+            surface, _BORDER, (0, _GRAPH_H), (_GRAPH_W, _GRAPH_H), 1
+        )
 
         spacing = min(24, (_GRAPH_W - 80) // total)
         start_x = (_GRAPH_W - spacing * (total - 1)) // 2
@@ -955,9 +1022,12 @@ class PygameDisplay:
 
         # label at far right
         total_lbl = _txt(font, f"{current}/{total - 1}", _DIM)
-        surface.blit(total_lbl, (_GRAPH_W - total_lbl.get_width() - 10, cy - 5))
+        surface.blit(
+            total_lbl,
+            (_GRAPH_W - total_lbl.get_width() - 10, cy - 5),
+        )
 
-    # ── Side panel ────────────────────────────────────────────────────────────
+    # ── Side panel ───────────────────────────────────────────────────────────
 
     def _draw_panel(
         self,
@@ -969,7 +1039,7 @@ class PygameDisplay:
         f_sm: Any,
         autoplay: bool,
     ) -> None:
-        """Draw the right information panel with stats, moves, controls, legend.
+        """Draw the right info panel: stats, moves, controls, legend.
 
         Args:
             surface: Target surface.
@@ -1016,7 +1086,10 @@ class PygameDisplay:
             surface.blit(surf, (x + indent, y))
             y += surf.get_height() + 3
 
-        def bar(value: float, width: int, height: int, fg: tuple[int, int, int]) -> None:
+        def bar(
+            value: float, width: int, height: int,
+            fg: tuple[int, int, int],
+        ) -> None:
             """Draw a filled progress bar.
 
             Args:
@@ -1026,10 +1099,15 @@ class PygameDisplay:
                 fg: Foreground fill colour.
             """
             nonlocal y
-            pygame.draw.rect(surface, _SEP, (x, y, width, height), border_radius=3)
+            pygame.draw.rect(
+                surface, _SEP, (x, y, width, height), border_radius=3,
+            )
             fill_w = int(width * max(0.0, min(value, 1.0)))
             if fill_w > 0:
-                pygame.draw.rect(surface, fg, (x, y, fill_w, height), border_radius=3)
+                pygame.draw.rect(
+                    surface, fg, (x, y, fill_w, height),
+                    border_radius=3,
+                )
             y += height + 5
 
         # ── Header ─────────────────────────────────────────────────────────
@@ -1065,7 +1143,7 @@ class PygameDisplay:
         y += 2
         if snap["moves"]:
             for move in snap["moves"]:
-                # colour by drone state: arrived = green, transit = gold, moving = cyan
+                # colour by state: arrived=green, transit=gold, moving=cyan
                 if move.endswith("_") or "_" in move.split("-", 1)[-1]:
                     mc = _C_TRANSIT
                 else:
@@ -1099,7 +1177,8 @@ class PygameDisplay:
         controls = [
             ("-> / Space", "next turn",   _ACCENT),
             ("<-",          "prev turn",   _ACCENT),
-            ("A",          f"autoplay {'ON' if autoplay else 'OFF'}", _GOLD if autoplay else _DIM),
+            ("A",          f"autoplay {'ON' if autoplay else 'OFF'}",
+             _GOLD if autoplay else _DIM),
             ("+ / -",      f"speed {self.speed_ms}ms", _DIM),
             ("Scroll",     "zoom in/out", _DIM),
             ("Mid-drag",   "pan view",    _DIM),
@@ -1137,7 +1216,7 @@ class PygameDisplay:
             surface.blit(lbl, (x + 22, y + 1))
             y += lbl.get_height() + 4
 
-    # ── Dijkstra algorithm overlay ────────────────────────────────────────────
+    # ── Dijkstra algorithm overlay ───────────────────────────────────────────
 
     def _draw_dijkstra_overlay(
         self,
@@ -1164,10 +1243,11 @@ class PygameDisplay:
         path_cur: list[str] = step["path_to_current"]
         final_path: list[str] = step["final_path"]
 
-        # ── Dark overlay on every zone that is not in the frontier ────────────
+        # ── Dark overlay on every zone that is not in the frontier ───────────
         overlay = pygame.Surface((_GRAPH_W, _GRAPH_H), pygame.SRCALPHA)
         for name, zpos in self._positions.items():
-            if zpos[0] < 0 or zpos[0] > _GRAPH_W or zpos[1] < 0 or zpos[1] > _GRAPH_H:
+            if (zpos[0] < 0 or zpos[0] > _GRAPH_W
+                    or zpos[1] < 0 or zpos[1] > _GRAPH_H):
                 continue
             if name in visited and name != current:
                 alpha = 150   # settled — dim grey
@@ -1178,7 +1258,7 @@ class PygameDisplay:
             pygame.draw.circle(overlay, (0, 0, 0, alpha), zpos, zr + 2)
         surface.blit(overlay, (0, 0))
 
-        # ── Path from start to current node (blue line) ───────────────────────
+        # ── Path from start to current node (blue line) ──────────────────────
         if len(path_cur) >= 2:
             lw = max(2, zr // 8)
             for i in range(len(path_cur) - 1):
@@ -1187,7 +1267,7 @@ class PygameDisplay:
                 if pa and pb:
                     pygame.draw.line(surface, _C_PATH, pa, pb, lw)
 
-        # ── Final shortest path (green glow, drawn once end is settled) ───────
+        # ── Final shortest path (green glow, drawn once end is settled) ──────
         if final_path and len(final_path) >= 2:
             glow_surf = pygame.Surface((_GRAPH_W, _GRAPH_H), pygame.SRCALPHA)
             lw = max(2, zr // 8)
@@ -1195,11 +1275,13 @@ class PygameDisplay:
                 pa = self._positions.get(final_path[i])
                 pb = self._positions.get(final_path[i + 1])
                 if pa and pb:
-                    pygame.draw.line(glow_surf, (*_C_START, 50), pa, pb, zr // 2)
+                    pygame.draw.line(
+                        glow_surf, (*_C_START, 50), pa, pb, zr // 2
+                    )
                     pygame.draw.line(surface, _C_START, pa, pb, lw)
             surface.blit(glow_surf, (0, 0))
 
-        # ── Frontier zones: gold pulsing rings + cost labels ──────────────────
+        # ── Frontier zones: gold pulsing rings + cost labels ─────────────────
         if frontier:
             costs_vals = list(frontier.values())
             min_c = min(costs_vals)
@@ -1211,7 +1293,9 @@ class PygameDisplay:
                 ratio = 1.0 - (cost - min_c) / (max_c - min_c + 0.001)
                 ring_r = zr + max(2, int(zr * 0.3 * ratio))
                 alpha = int(80 + 120 * ratio)
-                gs = pygame.Surface((ring_r * 2 + 8, ring_r * 2 + 8), pygame.SRCALPHA)
+                gs = pygame.Surface(
+                    (ring_r * 2 + 8, ring_r * 2 + 8), pygame.SRCALPHA,
+                )
                 pygame.draw.circle(gs, (*_GOLD, alpha // 2),
                                    (ring_r + 4, ring_r + 4), ring_r)
                 surface.blit(gs, (pos[0] - ring_r - 4, pos[1] - ring_r - 4))
@@ -1223,14 +1307,14 @@ class PygameDisplay:
                     surface.blit(clbl, (pos[0] - lw2 // 2,
                                         pos[1] - ring_r - lh2 - 2))
 
-        # ── Current zone: bright cyan ring + strong glow ──────────────────────
+        # ── Current zone: bright cyan ring + strong glow ─────────────────────
         pos = self._positions.get(current)
         if pos:
             _glow(surface, _ACCENT, pos, zr + 4, layers=4, strength=130)
             pygame.draw.circle(surface, _ACCENT, pos, zr + 4,
                                max(2, zr // 6))
 
-    # ── Dijkstra side panel ───────────────────────────────────────────────────
+    # ── Dijkstra side panel ──────────────────────────────────────────────────
 
     def _draw_dijkstra_panel(
         self,
@@ -1289,25 +1373,29 @@ class PygameDisplay:
                 fg: tuple[int, int, int]) -> None:
             """Draw a filled progress bar."""
             nonlocal y
-            pygame.draw.rect(surface, _SEP, (x, y, width, height), border_radius=3)
+            pygame.draw.rect(
+                surface, _SEP, (x, y, width, height), border_radius=3,
+            )
             fw = int(width * max(0.0, min(value, 1.0)))
             if fw > 0:
-                pygame.draw.rect(surface, fg, (x, y, fw, height), border_radius=3)
+                pygame.draw.rect(
+                    surface, fg, (x, y, fw, height), border_radius=3,
+                )
             y += height + 5
 
-        # ── Header ────────────────────────────────────────────────────────────
+        # ── Header ───────────────────────────────────────────────────────────
         y = 18
         write("DIJKSTRA", _ACCENT, font=f_title)
         write("Algorithm Replay", _DIM, font=f_sm)
         sep()
 
-        # ── Step progress ─────────────────────────────────────────────────────
+        # ── Step progress ────────────────────────────────────────────────────
         write(f"STEP  {step_idx + 1}", _GOLD, font=f_head)
         write(f"of {total_steps} settle events", _DIM, font=f_sm)
         y += 4
         bar(step_idx / max(1, total_steps - 1), rw, 6, _ACCENT)
 
-        # ── Current node ──────────────────────────────────────────────────────
+        # ── Current node ─────────────────────────────────────────────────────
         write("SETTLING", _TEXT, font=f_head)
         zone_obj = self.graph.zones.get(step["current"])
         ztype = zone_obj.zone_type if zone_obj else "?"
@@ -1321,7 +1409,7 @@ class PygameDisplay:
         write(f"  cost: {cost_here:.2f}", _GOLD, font=f_sm)
         sep()
 
-        # ── Path from start to current ────────────────────────────────────────
+        # ── Path from start to current ───────────────────────────────────────
         path = step["path_to_current"]
         write("PATH TO CURRENT", _TEXT, font=f_head)
         if path:
@@ -1335,7 +1423,10 @@ class PygameDisplay:
                 test_s = _txt(f_sm, joined, _C_PATH)
                 if test_s.get_width() > rw - 8:
                     if len(line_buf) > 1:
-                        write("  " + " → ".join(line_buf[:-1]), _C_PATH, font=f_sm)
+                        write(
+                            "  " + " → ".join(line_buf[:-1]),
+                            _C_PATH, font=f_sm,
+                        )
                         line_buf = [line_buf[-1]]
             if line_buf:
                 write("  " + " → ".join(line_buf), _C_PATH, font=f_sm)
@@ -1343,7 +1434,7 @@ class PygameDisplay:
             write("  (start)", _DIM, font=f_sm)
         sep()
 
-        # ── Frontier queue (cheapest 6) ───────────────────────────────────────
+        # ── Frontier queue (cheapest 6) ──────────────────────────────────────
         frontier = step["frontier"]
         write("FRONTIER", _TEXT, font=f_head)
         write(f"  {len(frontier)} zones pending", _DIM, font=f_sm)
@@ -1368,7 +1459,7 @@ class PygameDisplay:
             write(f"  total cost: {total_cost:.2f}", _C_START, font=f_sm)
             sep()
 
-        # ── Visited count ─────────────────────────────────────────────────────
+        # ── Visited count ────────────────────────────────────────────────────
         total_zones = len(self.graph.zones)
         visited_n = len(step["visited"])
         write("EXPLORED", _TEXT, font=f_head)
@@ -1396,7 +1487,7 @@ class PygameDisplay:
             surface.blit(ds, (x + 68, y))
             y += ks.get_height() + 3
 
-        # ── Legend ────────────────────────────────────────────────────────────
+        # ── Legend ───────────────────────────────────────────────────────────
         sep()
         write("LEGEND", _TEXT, font=f_head)
         y += 4

@@ -13,7 +13,7 @@ ZONE_COSTS: dict[str, float] = {
 
 
 class DijkstraStep(TypedDict):
-    """One step of the Dijkstra algorithm — captured each time a zone is settled.
+    """One step of Dijkstra — captured each time a zone is settled.
 
     Attributes:
         step: Sequential step index (0-based).
@@ -104,7 +104,8 @@ def dijkstra_with_steps(
                     continue
                 move_cost = ZONE_COSTS[neighbor.zone_type]
                 new_cost = current_cost + move_cost
-                if neighbor.name not in costs or new_cost < costs[neighbor.name]:
+                known = costs.get(neighbor.name)
+                if known is None or new_cost < known:
                     costs[neighbor.name] = new_cost
                     previous[neighbor.name] = current_name
                     heapq.heappush(heap, (new_cost, neighbor.name))
@@ -112,7 +113,11 @@ def dijkstra_with_steps(
         frontier = {
             name: c for name, c in costs.items() if name not in visited
         }
-        final_path = _partial_path(end.name) if is_end and end.name in previous else []
+        final_path = (
+            _partial_path(end.name)
+            if is_end and end.name in previous
+            else []
+        )
 
         steps.append(DijkstraStep(
             step=len(steps),
