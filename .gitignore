@@ -11,3 +11,5 @@ venv/
 CLAUDE.md
 SUBJECT.md
 tests/
+.claude/
+maps/
