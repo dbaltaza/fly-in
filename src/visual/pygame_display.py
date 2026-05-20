@@ -324,7 +324,9 @@ class PygameDisplay:
         _ft.init()
 
         screen = pygame.display.set_mode((_W, _H))
-        pygame.display.set_caption("Fly-in  —  Drone Fleet Simulation")
+        pygame.display.set_caption(
+            "Fly-in  —  Drone Fleet Simulation  —  by dbaltaza"
+        )
         clock = pygame.time.Clock()
 
         f_title: Any = _ft.SysFont("monospace", 18, bold=True)
@@ -1115,6 +1117,7 @@ class PygameDisplay:
         y = 18
         write("FLY-IN", _ACCENT, font=f_title)
         write("Drone Fleet Simulation", _DIM, font=f_sm)
+        write("by dbaltaza", _ACCENT, font=f_sm)
         sep()
 
         # ── Turn indicator ──────────────────────────────────────────────────
@@ -1411,6 +1414,7 @@ class PygameDisplay:
         y = 18
         write("DIJKSTRA", _ACCENT, font=f_title)
         write("Algorithm Replay", _DIM, font=f_sm)
+        write("by dbaltaza", _ACCENT, font=f_sm)
         sep()
 
         # ── Step progress ────────────────────────────────────────────────────
