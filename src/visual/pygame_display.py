@@ -1243,76 +1243,100 @@ class PygameDisplay:
         path_cur: list[str] = step["path_to_current"]
         final_path: list[str] = step["final_path"]
 
-        # ── Dark overlay on every zone that is not in the frontier ───────────
+        # ── Dim non-current, non-frontier zones ──────────────────────────────
         overlay = pygame.Surface((_GRAPH_W, _GRAPH_H), pygame.SRCALPHA)
         for name, zpos in self._positions.items():
             if (zpos[0] < 0 or zpos[0] > _GRAPH_W
                     or zpos[1] < 0 or zpos[1] > _GRAPH_H):
                 continue
-            if name in visited and name != current:
-                alpha = 150   # settled — dim grey
-            elif name not in frontier and name != current:
-                alpha = 200   # unknown — nearly black
+            if name == current:
+                continue
+            if name in visited:
+                alpha = 160
+            elif name not in frontier:
+                alpha = 220
             else:
                 continue
             pygame.draw.circle(overlay, (0, 0, 0, alpha), zpos, zr + 2)
         surface.blit(overlay, (0, 0))
 
-        # ── Path from start to current node (blue line) ──────────────────────
+        # ── Path from start to current node (thin blue) ──────────────────────
         if len(path_cur) >= 2:
-            lw = max(2, zr // 8)
+            lw = max(2, zr // 10)
             for i in range(len(path_cur) - 1):
                 pa = self._positions.get(path_cur[i])
                 pb = self._positions.get(path_cur[i + 1])
                 if pa and pb:
                     pygame.draw.line(surface, _C_PATH, pa, pb, lw)
 
-        # ── Final shortest path (green glow, drawn once end is settled) ──────
+        # ── Frontier: top-3 cheapest get bold rings + labels; rest subtle ────
+        if frontier:
+            sorted_frontier = sorted(frontier.items(), key=lambda kv: kv[1])
+            top_names = {n for n, _ in sorted_frontier[:3]}
+            for name, cost in frontier.items():
+                pos = self._positions.get(name)
+                if pos is None:
+                    continue
+                is_top = name in top_names
+                ring_r = zr + (5 if is_top else 2)
+                ring_w = max(2, zr // 7) if is_top else max(1, zr // 14)
+                pygame.draw.circle(surface, _GOLD, pos, ring_r, ring_w)
+                if is_top and zr >= 9:
+                    clbl = _txt(font_xs, f"{cost:.1f}", _GOLD)
+                    lw2, lh2 = clbl.get_size()
+                    bg = pygame.Surface(
+                        (lw2 + 6, lh2 + 2), pygame.SRCALPHA,
+                    )
+                    bg.fill((0, 0, 0, 210))
+                    surface.blit(
+                        bg,
+                        (pos[0] - lw2 // 2 - 3,
+                         pos[1] - ring_r - lh2 - 4),
+                    )
+                    surface.blit(
+                        clbl,
+                        (pos[0] - lw2 // 2, pos[1] - ring_r - lh2 - 3),
+                    )
+
+        # ── Final shortest path (only when end settled) ──────────────────────
         if final_path and len(final_path) >= 2:
             glow_surf = pygame.Surface((_GRAPH_W, _GRAPH_H), pygame.SRCALPHA)
-            lw = max(2, zr // 8)
+            lw = max(3, zr // 6)
             for i in range(len(final_path) - 1):
                 pa = self._positions.get(final_path[i])
                 pb = self._positions.get(final_path[i + 1])
                 if pa and pb:
                     pygame.draw.line(
-                        glow_surf, (*_C_START, 50), pa, pb, zr // 2
+                        glow_surf, (*_C_START, 60), pa, pb, zr // 2,
                     )
                     pygame.draw.line(surface, _C_START, pa, pb, lw)
             surface.blit(glow_surf, (0, 0))
 
-        # ── Frontier zones: gold pulsing rings + cost labels ─────────────────
-        if frontier:
-            costs_vals = list(frontier.values())
-            min_c = min(costs_vals)
-            max_c = max(costs_vals) if len(costs_vals) > 1 else min_c + 1.0
-            for name, cost in frontier.items():
-                pos = self._positions.get(name)
-                if pos is None:
-                    continue
-                ratio = 1.0 - (cost - min_c) / (max_c - min_c + 0.001)
-                ring_r = zr + max(2, int(zr * 0.3 * ratio))
-                alpha = int(80 + 120 * ratio)
-                gs = pygame.Surface(
-                    (ring_r * 2 + 8, ring_r * 2 + 8), pygame.SRCALPHA,
-                )
-                pygame.draw.circle(gs, (*_GOLD, alpha // 2),
-                                   (ring_r + 4, ring_r + 4), ring_r)
-                surface.blit(gs, (pos[0] - ring_r - 4, pos[1] - ring_r - 4))
-                pygame.draw.circle(surface, _GOLD, pos, ring_r,
-                                   max(1, zr // 10))
-                if zr >= 10:
-                    clbl = _txt(font_xs, f"{cost:.1f}", _GOLD)
-                    lw2, lh2 = clbl.get_size()
-                    surface.blit(clbl, (pos[0] - lw2 // 2,
-                                        pos[1] - ring_r - lh2 - 2))
-
-        # ── Current zone: bright cyan ring + strong glow ─────────────────────
+        # ── Current zone: dramatic emphasis, drawn last ──────────────────────
         pos = self._positions.get(current)
         if pos:
-            _glow(surface, _ACCENT, pos, zr + 4, layers=4, strength=130)
-            pygame.draw.circle(surface, _ACCENT, pos, zr + 4,
-                               max(2, zr // 6))
+            # Strong halo
+            _glow(surface, _ACCENT, pos, zr + 8, layers=5, strength=180)
+            # Thick outer ring
+            pygame.draw.circle(
+                surface, _ACCENT, pos, zr + 8, max(3, zr // 5),
+            )
+            # Inner highlight ring (lighter cyan)
+            pygame.draw.circle(
+                surface, _lighter(_ACCENT, 0.5), pos, max(2, zr - 2),
+                max(1, zr // 12),
+            )
+            # Downward-pointing arrow above the zone
+            if zr >= 8:
+                ax = pos[0]
+                ay = pos[1] - zr - 18
+                arrow_sz = max(6, zr // 3)
+                triangle = [
+                    (ax, ay + arrow_sz + 2),
+                    (ax - arrow_sz, ay - 2),
+                    (ax + arrow_sz, ay - 2),
+                ]
+                pygame.draw.polygon(surface, _ACCENT, triangle)
 
     # ── Dijkstra side panel ──────────────────────────────────────────────────
 
