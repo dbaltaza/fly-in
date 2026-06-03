@@ -243,6 +243,36 @@ def _darker(
     )
 
 
+def _rainbow_color(t_ms: int, phase: float = 0.0) -> tuple[int, int, int]:
+    """Return a cycling rainbow RGB colour based on elapsed milliseconds.
+
+    Args:
+        t_ms: Current time in milliseconds (e.g. pygame.time.get_ticks()).
+        phase: Optional phase offset in the range 0..1.
+
+    Returns:
+        RGB tuple cycling smoothly through the hue spectrum.
+    """
+    hue = ((t_ms / 2500.0) + phase) % 1.0
+    h6 = hue * 6.0
+    i = int(h6)
+    f = h6 - i
+    q = 1.0 - f
+    if i == 0:
+        r, g, b = 1.0, f, 0.0
+    elif i == 1:
+        r, g, b = q, 1.0, 0.0
+    elif i == 2:
+        r, g, b = 0.0, 1.0, f
+    elif i == 3:
+        r, g, b = 0.0, q, 1.0
+    elif i == 4:
+        r, g, b = f, 0.0, 1.0
+    else:
+        r, g, b = 1.0, 0.0, q
+    return (int(r * 230) + 25, int(g * 230) + 25, int(b * 230) + 25)
+
+
 def _smoothstep(t: float) -> float:
     """Return smoothstep ease-in-out of t clamped to [0, 1].
 
@@ -727,6 +757,8 @@ class PygameDisplay:
             color = _zone_fill_color(
                 name, zone.zone_type, zone.color, start_name, end_name,
             )
+            if zone.color and zone.color.lower() == "rainbow":
+                color = _rainbow_color(pygame.time.get_ticks())
             count = drone_counts.get(name, 0)
             is_unlimited = name in (start_name, end_name)
 
