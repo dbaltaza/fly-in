@@ -4,6 +4,7 @@ from ..models.graph import Graph
 from ..models.zone import Zone
 from ..models.drone import Drone
 from ..pathfinding.dijkstra import dijkstra_with_steps, DijkstraStep
+from ..pathfinding.scheduler import find_paths, assign_drones
 
 
 class DroneSnapshot(TypedDict):
@@ -67,6 +68,7 @@ class SimulationEngine:
         self.turn = 0
         self.turn_moves: list[str] = []
         self.snapshots: list[TurnSnapshot] = []
+        self._arrived_this_turn: set[int] = set()
         self._active_connections: list[tuple[str, str]] = []
         self.dijkstra_steps: list[DijkstraStep] = []
 
@@ -76,39 +78,113 @@ class SimulationEngine:
         if not path:
             raise ValueError("No path exists from start to end zone.")
 
-        self.start.current_drones = graph.nb_drones
-        for i in range(1, graph.nb_drones + 1):
-            drone = Drone(
+        self._assignment = self._plan(path)
+        self._build_drones(self._assignment)
+
+    def _plan(self, shortest: list[Zone]) -> list[list[Zone]]:
+        """Choose the drone→path assignment that finishes in the fewest turns.
+
+        Finds several diverse lanes, then sweeps over how many of them to use
+        (1 = everyone on the shortest path, up to all of them). Each candidate
+        is dry-run silently and the fastest one wins, so spreading the fleet
+        can only ever help — a worse split is simply never selected.
+
+        Args:
+            shortest: The plain shortest path, used as a guaranteed fallback.
+
+        Returns:
+            A per-drone list of paths (index i → drone i+1's path).
+        """
+        n = self.graph.nb_drones
+        paths = find_paths(self.graph, self.start, self.end, k=min(n, 8))
+        if not paths:
+            paths = [shortest]
+
+        best_assignment = assign_drones(paths[:1], n)
+        best_turns: int | None = None
+        for width in range(1, len(paths) + 1):
+            candidate = assign_drones(paths[:width], n)
+            self._build_drones(candidate)
+            turns = self._simulate(record=False)
+            if turns is None:
+                continue
+            if best_turns is None or turns < best_turns:
+                best_turns = turns
+                best_assignment = candidate
+        return best_assignment
+
+    def _build_drones(self, assignment: list[list[Zone]]) -> None:
+        """Reset graph occupancy and create the fleet for ``assignment``.
+
+        Args:
+            assignment: Per-drone paths (index i → drone i+1's path).
+        """
+        for zone in self.graph.zones.values():
+            zone.current_drones = 0
+        for connection in self.graph.connections:
+            connection.current_usage = 0
+        self.start.current_drones = self.graph.nb_drones
+        self.drones = []
+        for i in range(1, self.graph.nb_drones + 1):
+            self.drones.append(Drone(
                 id=i,
-                current_zone=graph.start,
-                path=path,
+                current_zone=self.start,
+                path=assignment[i - 1],
                 path_index=0,
                 state="waiting",
                 transit_turns_remaining=0,
-            )
-            self.drones.append(drone)
-
-        self.snapshots.append(self._take_snapshot())
+            ))
 
     def run(self) -> None:
-        """Run the simulation until all drones reach the end zone.
+        """Run the chosen plan to completion, logging each turn.
 
         Raises:
             RuntimeError: If no drone moves in a turn (deadlock detected).
         """
+        self._build_drones(self._assignment)
+        self._simulate(record=True)
+
+    def _simulate(self, *, record: bool) -> int | None:
+        """Advance the pre-built fleet until every drone has arrived.
+
+        Args:
+            record: When True, capture a snapshot per turn and print the turn
+                log, and raise on deadlock. When False, run silently and return
+                None on deadlock (used to score candidate plans).
+
+        Returns:
+            The number of turns taken, or None if a deadlock occurred during a
+            silent run.
+
+        Raises:
+            RuntimeError: On deadlock during a recorded run.
+        """
+        self.turn = 0
+        self.turn_moves = []
+        self._active_connections = []
+        self._arrived_this_turn = set()
+        if record:
+            self.snapshots = [self._take_snapshot()]
+
         while not all(drone.is_done() for drone in self.drones):
             self.turn += 1
             self.turn_moves = []
             self._active_connections = []
+            self._arrived_this_turn = set()
             self._reset_connections()
             self._tick_transit()
             self._move_drones()
             if not self.turn_moves:
-                raise RuntimeError(
-                    f"Deadlock detected at turn {self.turn}: no drone moved."
-                )
-            self.snapshots.append(self._take_snapshot())
-            self._print_turn()
+                if record:
+                    raise RuntimeError(
+                        f"Deadlock detected at turn {self.turn}: "
+                        "no drone moved."
+                    )
+                return None
+            if record:
+                self.snapshots.append(self._take_snapshot())
+                self._print_turn()
+        return self.turn
 
     def _take_snapshot(self) -> TurnSnapshot:
         """Capture the current drone states into a TurnSnapshot.
@@ -158,6 +234,7 @@ class SimulationEngine:
             )
             drone.tick_transit()
             if drone.state != "in_transit":
+                self._arrived_this_turn.add(drone.id)
                 self.turn_moves.append(
                     f"{drone.label()}-{drone.current_zone.name}"
                 )
@@ -176,6 +253,10 @@ class SimulationEngine:
         """
         for drone in self.drones:
             if not drone.can_move():
+                continue
+            # A drone that completed a restricted transit this turn has already
+            # used its action (the arrival); it cannot also depart this turn.
+            if drone.id in self._arrived_this_turn:
                 continue
             next_zone = drone.next_zone()
             if next_zone is None:
@@ -209,8 +290,10 @@ class SimulationEngine:
             if drone.state == "in_transit":
                 td = drone.transit_destination
                 dst = td.name  # type: ignore[union-attr]
+                # Restricted transit: emit the connection name (source-dest),
+                # matching the map file's `name1-name2` connection format.
                 self.turn_moves.append(
-                    f"{drone.label()}-{source_name}_{dst}"
+                    f"{drone.label()}-{source_name}-{dst}"
                 )
             else:
                 self.turn_moves.append(

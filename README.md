@@ -6,7 +6,7 @@
 
 A drone fleet routing simulation written in Python. Given a map of connected zones, the program moves all drones from a start hub to an end hub in the fewest possible simulation turns, respecting zone capacity limits, connection bandwidth limits, and restricted-zone transit rules.
 
-The system parses a custom map format, runs Dijkstra's algorithm to find the optimal path, simulates turn-by-turn drone movement with full constraint enforcement, and provides a graphical replay via pygame.
+The system parses a custom map format, finds multiple diverse routes with Dijkstra-based pathfinding, distributes the fleet across them to maximize throughput, simulates turn-by-turn drone movement with full constraint enforcement, and provides a graphical replay via pygame.
 
 ## Instructions
 
@@ -78,6 +78,8 @@ make clean
 ### References
 
 - [Dijkstra's algorithm — Wikipedia](https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm)
+- [k shortest path routing — Wikipedia](https://en.wikipedia.org/wiki/K_shortest_path_routing) (inspiration for the penalised multi-lane search)
+- [Edge-disjoint shortest paths / flow distribution — Wikipedia](https://en.wikipedia.org/wiki/Edge_disjoint_shortest_pair_algorithm)
 - [Python heapq — stdlib docs](https://docs.python.org/3/library/heapq.html)
 - [Python typing — stdlib docs](https://docs.python.org/3/library/typing.html)
 - [Pydantic v2 — docs](https://docs.pydantic.dev/latest/)
@@ -89,7 +91,8 @@ Claude (Anthropic) was used throughout this project as a development assistant. 
 
 - **Parser**: AI helped structure the regex-based line parser and the custom exception hierarchy.
 - **Dijkstra**: AI suggested using a cost of `0.9` for priority zones (instead of `1.0`) so `heapq` naturally prefers them without extra tie-breaking logic.
-- **Simulation engine**: AI helped reason through the same-turn capacity freeing rule (drones leaving a zone free their slot before incoming drones are checked).
+- **Multi-path scheduler**: AI helped design the penalised-Dijkstra lane search and the greedy lem-in distribution, plus the dry-run plan selection that guarantees multi-path never regresses against the single shortest path.
+- **Simulation engine**: AI helped reason through the same-turn capacity freeing rule (drones leaving a zone free their slot before incoming drones are checked), the strict one-action-per-turn reading of restricted transit, and reserving a zone slot at departure so capacity can never be exceeded.
 - **Pygame display**: AI implemented the adaptive zone sizing, mouse-centered zoom, drone animation (linear interpolation between snapshots, two-phase waypoint animation for restricted-zone pass-throughs), and the Dijkstra algorithm step replay overlay.
 - **Type safety**: AI helped resolve mypy errors and maintain full type annotation coverage.
 
@@ -99,7 +102,7 @@ All generated code was reviewed, tested against all provided maps, and understoo
 
 ### Pathfinding — Dijkstra with zone-type cost bias
 
-A single Dijkstra run from start to end is performed at startup. Edge costs are assigned by **destination zone type**:
+Pathfinding is built on Dijkstra's algorithm (hand-rolled with `heapq`, no graph library). Edge costs are assigned by **destination zone type**:
 
 | Zone type | Cost |
 |-----------|------|
@@ -112,38 +115,48 @@ Using `0.9` for priority zones (rather than `1.0` with a tie-breaker) means `hea
 
 The algorithm records every settle event as a `DijkstraStep`, enabling the graphical replay of the algorithm frame by frame (press D in the pygame window).
 
-### Simulation — greedy single-path with staggered departure
+### Multi-path distribution (`scheduler.py`)
 
-All drones follow the same Dijkstra path. The engine processes each turn in two phases:
+Sending the whole fleet down one shortest path serialises throughput badly whenever that path runs through a capacity-1 or restricted (2-turn) bottleneck. The scheduler instead spreads drones over several routes:
+
+1. **Find diverse lanes** — `find_paths()` runs Dijkstra repeatedly, adding a penalty to the edges of each path already chosen so the next run diverges onto a different lane wherever the graph offers a choice. Forced edges (a sole exit, the final corridor) are reused as needed.
+2. **Distribute the fleet** — `assign_drones()` uses a greedy *lem-in* style rule: each drone is placed on the lane that currently minimises `travel_time + drones_already_assigned`, so equal-length lanes round-robin and shorter lanes absorb more drones.
+3. **Keep the fastest split** — the engine's `_plan()` dry-runs every candidate split (everyone on the shortest path, up to using all lanes) and keeps the one that finishes in the fewest turns. Multi-path can therefore only ever help: a worse split is never selected, and single-lane maps fall back cleanly to the shortest path.
+
+### Simulation — turn loop with full constraint enforcement
+
+The engine processes each turn in two phases:
 
 1. **Tick transit**: advance any drone mid-way through a restricted zone (turn 2 of a 2-turn move).
 2. **Move waiting drones**: for each waiting drone, attempt to move to its next path zone. Checks:
    - Connection `max_link_capacity` not exceeded this turn.
-   - Destination zone `max_drones` not exceeded (start and end zones are unlimited).
+   - Destination zone `max_drones` not exceeded (start and end zones are unlimited). The slot is reserved at the moment of departure, so two drones can never claim the same restricted-zone slot in one turn.
    - Drones that departed earlier in the same pass have already freed their source slot.
 
-This same-pass slot freeing is the key scheduling insight: drone A leaves zone X → slot freed → drone B can enter zone X in the same turn. This naturally staggers the fleet without a separate scheduler.
+This same-pass slot freeing is the key scheduling insight: drone A leaves zone X → slot freed → drone B can enter zone X in the same turn. This staggers the fleet within each lane.
 
 A deadlock guard raises `RuntimeError` if no drone moves in a turn.
 
 ### Restricted zone transit
 
-A restricted zone costs 2 turns. On turn 1 the drone commits to the crossing (shown as `D1-zonea_zoneb` in output). On turn 2 it arrives. The drone cannot stop mid-connection — once committed it must arrive.
+A restricted zone costs 2 turns. On turn 1 the drone commits to the crossing (shown as `D1-zonea-zoneb` in output — the connection name). On turn 2 it arrives. The drone cannot stop mid-connection — once committed it must arrive. Completing that arrival **is** the drone's action for that turn: it cannot also depart the restricted zone on the same turn (one action per drone per turn), which keeps the 2-turn cost honest.
 
 ### Performance results
 
 | Map | Drones | Target | Achieved |
 |-----|--------|--------|----------|
 | Easy: linear path | 2 | ≤ 6 | **4** |
-| Easy: simple fork | 4 | ≤ 8 | **6** |
+| Easy: simple fork | 4 | ≤ 8 | **4** |
 | Easy: basic capacity | 4 | ≤ 6 | **4** |
 | Medium: dead end trap | 5 | ≤ 12 | **8** |
-| Medium: circular loop | 6 | ≤ 15 | **9** |
-| Medium: priority puzzle | 5 | ≤ 12 | **8** |
+| Medium: circular loop | 6 | ≤ 15 | **15** |
+| Medium: priority puzzle | 5 | ≤ 12 | **7** |
 | Hard: maze nightmare | 8 | ≤ 30 | **13** |
 | Hard: capacity hell | 12 | ≤ 35 | **16** |
 | Hard: ultimate challenge | 15 | ≤ 45 | **26** |
-| Challenger: impossible dream | 25 | ref 45 | **39** ✓ |
+| Challenger: impossible dream | 25 | ref 45 | **44** ✓ |
+
+All targets met under strict, spec-compliant movement rules (each drone takes at most one action per turn, and a restricted zone genuinely costs 2 turns).
 
 ## Visual representation
 
@@ -155,7 +168,7 @@ The pygame window uses a dark cyberpunk theme and renders the graph as a force-d
 
 **Connections** are drawn as lines. Active connections (traversed this turn) glow gold with an arrowhead at the midpoint indicating direction of travel.
 
-**Drones** are animated smoothly between turns using smoothstep easing. In-transit drones (mid restricted-zone crossing) sit at the midpoint of their connection and turn gold. When a drone passes through a restricted zone in a single engine turn (arrives and immediately departs), a two-phase waypoint animation ensures it visibly touches the hub rather than skipping it.
+**Drones** are animated smoothly between turns using smoothstep easing. In-transit drones (mid restricted-zone crossing) sit at the midpoint of their connection and turn gold, then land on the restricted hub the following turn.
 
 **Dijkstra replay** (press D): overlays the algorithm's state step by step. Settled zones are dimmed, the currently settling zone pulses cyan, frontier zones glow gold with their cost displayed, and the cheapest path from start to the current zone is drawn in blue. When the end zone is settled the final shortest path glows green. The side panel shows the frontier queue, path-to-current, and explored-zone progress.
 

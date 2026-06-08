@@ -53,9 +53,12 @@ class Drone(BaseModel):
     def start_move(self, connection: Connection) -> None:
         """Commit this drone to moving toward next_zone via the connection.
 
-        Frees the current zone's capacity and claims the connection. Completes
-        the move immediately for normal/priority zones, or enters restricted
-        transit for arrival next turn.
+        Frees the current zone's capacity, claims the connection, and
+        immediately reserves a slot in the destination zone so a second drone
+        checked later in the same turn cannot also claim it (prevents capacity
+        overflow at restricted zones, whose arrival is deferred a turn).
+        Completes the move at once for normal/priority zones, or enters
+        restricted transit for arrival next turn.
 
         Args:
             connection: The Connection being traversed toward next_zone.
@@ -65,6 +68,7 @@ class Drone(BaseModel):
             return
         self.current_zone.current_drones -= 1
         connection.current_usage += 1
+        nz.current_drones += 1
         if nz.zone_type == "restricted":
             self.state = "in_transit"
             self.transit_destination = nz
@@ -77,6 +81,7 @@ class Drone(BaseModel):
 
         Decrements transit_turns_remaining. When it hits zero, completes
         arrival: updates current_zone, clears transit fields, updates state.
+        The destination slot was already reserved in start_move.
         """
         self.transit_turns_remaining -= 1
         if self.transit_turns_remaining == 0:
@@ -90,15 +95,16 @@ class Drone(BaseModel):
     def arrive(self, zone: Zone) -> None:
         """Land the drone in the given zone.
 
-        Updates current_zone and zone occupancy, advances path_index, and
-        sets state to 'arrived' if this is the final zone, else 'waiting'.
+        Updates current_zone and advances path_index, setting state to
+        'arrived' if this is the final zone, else 'waiting'. The zone's
+        occupancy slot is reserved earlier, in start_move, so it is not
+        incremented again here.
 
         Args:
             zone: The Zone the drone is landing in.
         """
         self.current_zone = zone
         self.path_index += 1
-        zone.current_drones += 1
         if zone.name == self.path[-1].name:
             self.state = "arrived"
         else:
